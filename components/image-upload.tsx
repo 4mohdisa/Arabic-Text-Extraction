@@ -4,12 +4,11 @@ import type React from "react"
 import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
 import { Loader2, File as FileIcon, X, Upload } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { extractDataFromImage } from "@/app/actions/openai.action"
 import type { ExtractedText } from "@/types"
+import Image from "next/image"
 
 interface ImageUploadProps {
   onDataExtracted: (data: ExtractedText) => void
@@ -18,9 +17,8 @@ interface ImageUploadProps {
 export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'enhancing'>('idle');
-  const [extractedText, setExtractedText] = useState<ExtractedText | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'enhancing' | 'processing' | 'success' | 'error'>('idle')
+  const [previewUrl, setPreviewUrl] = useState<string>('')
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
@@ -33,7 +31,7 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
     }
   }
   
-  const createPreview = (file: File) => {
+  const createPreview = useCallback((file: File) => {
     // Clear previous preview
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
@@ -50,7 +48,7 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
       extractedAt: new Date().toISOString(),
       previewUrl: url
     } as ExtractedText)
-  }
+  }, [previewUrl, onDataExtracted])
   
   const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -68,11 +66,11 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
     setDragActive(false)
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0]
-      setFile(droppedFile)
-      createPreview(droppedFile)
+      const file = e.dataTransfer.files[0]
+      setFile(file)
+      createPreview(file)
     }
-  }, [])
+  }, [createPreview])
   
   const handleButtonClick = () => {
     inputRef.current?.click()
@@ -80,10 +78,16 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
 
   const handleClear = () => {
     setFile(null);
-    setPreviewUrl(null);
-    setExtractedText(null);
+    setPreviewUrl('');
     setUploadStatus('idle');
     setIsLoading(false);
+    
+    // Reset the parent component state
+    onDataExtracted({
+      content: '',
+      sourceFile: '',
+      extractedAt: new Date().toISOString(),
+    });
   };
 
   const handleUpload = async () => {
@@ -120,7 +124,7 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
         previewUrl: previewUrl || undefined
       }
       
-      setExtractedText(extractedData)
+      // Send the extracted data to the parent component
       onDataExtracted(extractedData)
       
       toast({
@@ -137,30 +141,6 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
     } finally {
       setIsLoading(false)
       setUploadStatus('idle')
-    }
-  }
-
-  const handleCopyToClipboard = () => {
-    if (extractedText?.content) {
-      navigator.clipboard.writeText(extractedText.content)
-      toast({
-        title: "Copied",
-        description: "Text copied to clipboard",
-      })
-    }
-  }
-
-  const handleDownloadText = () => {
-    if (extractedText?.content) {
-      const blob = new Blob([extractedText.content], { type: 'text/plain;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `extracted-arabic-text-${new Date().getTime()}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
     }
   }
 
@@ -189,10 +169,12 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
             <div className="flex items-center gap-2 mb-2">
               <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
                 {previewUrl ? (
-                  <img 
+                  <Image 
                     src={previewUrl} 
                     alt="Preview" 
                     className="h-full w-full object-cover rounded-md" 
+                    width={40}
+                    height={40}
                   />
                 ) : (
                   <FileIcon className="h-5 w-5 text-muted-foreground" />

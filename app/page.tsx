@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Copy, Download, FileText, ImageIcon, Clock, Loader2, X } from "lucide-react"
+import Image from "next/image"
 
 // Define a history item type
 interface HistoryItem extends ExtractedText {
@@ -20,7 +21,7 @@ interface HistoryItem extends ExtractedText {
 export default function Home() {
   const [extractedText, setExtractedText] = useState<ExtractedText | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
-  const [activeTab, setActiveTab] = useState("extracted")
+  const [activeTab, setActiveTab] = useState<'extracted' | 'preview'>('extracted');
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
 
   // Load history from localStorage on component mount
@@ -137,16 +138,16 @@ export default function Home() {
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger 
                       value="extracted" 
-                      className="flex items-center gap-2"
-                      onClick={() => setActiveTab("extracted")}
+                      onClick={() => setActiveTab('extracted')}
+                      className={activeTab === 'extracted' ? 'font-medium' : ''}
                     >
                       <FileText className="h-4 w-4" />
                       Extracted Text
                     </TabsTrigger>
                     <TabsTrigger 
                       value="preview" 
-                      className="flex items-center gap-2"
-                      onClick={() => setActiveTab("preview")}
+                      onClick={() => setActiveTab('preview')}
+                      className={activeTab === 'preview' ? 'font-medium' : ''}
                     >
                       <ImageIcon className="h-4 w-4" />
                       Document Preview
@@ -230,10 +231,13 @@ export default function Home() {
                             </Button>
                           </div>
                         ) : (
-                          <img 
-                            src={extractedText.previewUrl} 
-                            alt="Document Preview" 
-                            className="max-w-full max-h-full object-contain"
+                          <Image
+                            src={extractedText.previewUrl || ''}
+                            alt="Document preview"
+                            className="max-w-full h-auto rounded-md"
+                            width={500}
+                            height={700}
+                            style={{ width: 'auto', height: 'auto' }}
                           />
                         )}
                       </div>
