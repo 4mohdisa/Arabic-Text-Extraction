@@ -1,16 +1,6 @@
-export interface ExtractedData {
-  date: string
-  time: string
-  supplier: string
-  product: string
-  qty: number
-  orderNumber: string
-  invoiceNumber: string
-  batchCode: string
-  useByDate: string
-  tempCheck: string
-  productIntegrityCheck: string
-  weightCheck: string
-  comments: string
-  signature: string
+export interface ExtractedText {
+  content: string
+  sourceFile: string
+  extractedAt: string
+  previewUrl?: string
 }
