@@ -5,6 +5,8 @@ import 'server-only';
 import sharp from 'sharp';
 import { ChatCompletion } from 'openai/resources';
 import { ExtractedText } from '@/types';
+import { extractTextWithTesseract } from './tesseract.action';
+import { detectAndCropDocument } from './document-detection';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -22,8 +24,20 @@ async function fetchWithRetry(base64Image: string, attempt: number = 1, maxRetri
                         {
                             type: "text",
                             text: `You are a specialist in Arabic OCR.
-Please extract **only** the Arabic text from the following image.
-Strictly return the raw Arabic content as it appears, with no translations, no explanations, no formatting notes, and no extra characters.`
+
+Please extract **only** the Arabic text from the following image, maintaining the original formatting as much as possible.
+
+IMPORTANT INSTRUCTIONS:
+1. Preserve the original layout, including paragraph breaks and line spacing
+2. Maintain any bullet points, numbering, or list structures
+3. Keep the text right-aligned as it appears in the original
+4. Preserve any section headings or structural elements
+5. Use double line breaks (\n\n) between paragraphs
+6. Use single line breaks (\n) for line breaks within paragraphs
+7. Do not add any explanations, translations, or comments
+8. Do not add any non-Arabic text or characters
+
+Return ONLY the formatted Arabic text content.`
                         },
                         {
                             type: "image_url",
@@ -121,44 +135,81 @@ async function preprocessImage(base64Image: string): Promise<string> {
     try {
         const buffer = Buffer.from(base64Image, 'base64');
         console.log('Analyzing image characteristics...');
-        const options = await analyzeImage(buffer);
+        
+        // Step 1: Detect and crop document (remove hands/background)
+        console.log('Attempting to detect and crop document page...');
+        // Use a try-catch block specifically for the document detection to handle any errors
+        let croppedBuffer;
+        try {
+            croppedBuffer = await detectAndCropDocument(buffer);
+        } catch (error) {
+            console.error('Document detection failed, using original image:', error);
+            croppedBuffer = buffer; // Fallback to original image if cropping fails
+        }
+        
+        // Step 2: Analyze the cropped image to determine optimal processing
+        const options = await analyzeImage(croppedBuffer);
         console.log(`Using preprocessing mode: ${options.mode}`);
 
-        let pipeline = sharp(buffer)
-            .rotate() // Auto-orient
+        // Step 3: First pass: auto-rotate and normalize
+        let image = sharp(croppedBuffer)
+            .rotate() // correct camera rotation
             .normalize()
             .modulate({ brightness: options.brightness });
 
         if (options.gamma) {
-            pipeline = pipeline.gamma(options.gamma);
+            image = image.gamma(options.gamma);
         }
 
         if (options.contrastFactor) {
             const factor = options.contrastFactor;
-            pipeline = pipeline.linear(factor, -(factor - 1) * 128);
+            image = image.linear(factor, -(factor - 1) * 128);
         }
 
         if (options.sharpness) {
-            pipeline = pipeline.sharpen({ sigma: options.sharpness });
+            image = image.sharpen({ sigma: options.sharpness });
         }
 
         if (options.denoise) {
-            pipeline = pipeline.median(1);
+            image = image.median(1);
         }
 
-        pipeline = pipeline
-            .grayscale()
-            .recomb([
-                [1.1, -0.05, -0.05],
-                [-0.05, 1.1, -0.05],
-                [-0.05, -0.05, 1.1]
-            ]);
+        // Step 4: Grayscale
+        image = image.grayscale();
 
+        // Step 5: Optional: recomb boost for better text definition
+        image = image.recomb([
+            [1.1, -0.05, -0.05],
+            [-0.05, 1.1, -0.05],
+            [-0.05, -0.05, 1.1],
+        ]);
+
+        // Step 6: Threshold for strong ink/text definition
         if (options.mode === 'document' || options.mode === 'high_contrast') {
-            pipeline = pipeline.threshold(options.mode === 'high_contrast' ? 128 : 150);
+            image = image.threshold(options.mode === 'high_contrast' ? 128 : 150);
         }
 
-        const processedImageBuffer = await pipeline
+        // Extract bounding box (basic cropping of main content)
+        const metadata = await image.metadata();
+        if (metadata.width && metadata.height) {
+            image = image.extract({
+                left: 0,
+                top: 0,
+                width: metadata.width,
+                height: metadata.height
+            });
+        }
+
+        // Resize slightly larger to reduce model clipping
+        image = image.resize({
+            width: Math.round(metadata.width! * 1.05),
+            height: Math.round(metadata.height! * 1.05),
+            fit: 'contain',
+            background: { r: 255, g: 255, b: 255 }
+        });
+
+        // Final JPEG output
+        const processedImageBuffer = await image
             .jpeg({ quality: 95 })
             .toBuffer();
 
@@ -173,27 +224,88 @@ export async function extractDataFromImage(base64Image: string) {
     try {
         console.log('Preprocessing image to enhance text visibility...');
         const enhancedImage = await preprocessImage(base64Image);
-        const response = await fetchWithRetry(enhancedImage);
-        console.log('Raw API Response:', JSON.stringify(response, null, 2));
-
-        const content = response.choices?.[0]?.message?.content;
-
-        if (!content || !/[ء-ي]/.test(content)) {
-            return {
-                success: false,
-                data: null,
-                error: 'Arabic text not detected or empty content'
-            };
+        
+        // Step 1: Try with GPT-4o Vision first
+        console.log('Attempting extraction with GPT-4o Vision...');
+        let gpt4oSuccess = false;
+        let content = '';
+        let gpt4oError = '';
+        
+        try {
+            const response = await fetchWithRetry(enhancedImage);
+            console.log('GPT-4o Vision Response Received');
+            content = response.choices?.[0]?.message?.content || '';
+        } catch (error) {
+            console.error('Error with GPT-4o Vision extraction:', error);
+            gpt4oError = error instanceof Error ? error.message : 'GPT-4o Vision extraction failed';
         }
 
-        const extractedText: ExtractedText = {
-            content: content.trim(),
-            sourceFile: '',
-            extractedAt: new Date().toISOString()
-        };
+        // More comprehensive Arabic character detection
+        // This regex includes more Arabic characters and diacritics
+        const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+        
+        // Check if GPT-4o returned valid Arabic text
+        if (content && arabicRegex.test(content) && content.trim().length >= 5) {
+            const extractedText: ExtractedText = {
+                content: content.trim(),
+                sourceFile: '',
+                extractedAt: new Date().toISOString(),
+                ocrEngine: 'gpt4o'
+            };
 
-        console.log('Extracted Arabic text:', extractedText.content);
-        return { success: true, data: extractedText };
+            console.log('Successfully extracted Arabic text with GPT-4o Vision');
+            return { success: true, data: extractedText };
+        }
+        
+        // Step 2: If GPT-4o fails, try Tesseract OCR as fallback
+        console.log('GPT-4o Vision extraction failed or returned insufficient text. Trying Tesseract OCR fallback...');
+        
+        // Initialize tesseractResult with proper type structure
+        let tesseractResult: {
+            success: boolean;
+            data: ExtractedText | null;
+            error: string;
+        } = {
+            success: false,
+            data: null,
+            error: ''
+        };
+        
+        try {
+            const result = await extractTextWithTesseract(enhancedImage);
+            
+            // Handle the result with proper type checking
+            if (result.success && result.data) {
+                console.log('Successfully extracted Arabic text with Tesseract OCR fallback');
+                return {
+                    success: result.success,
+                    data: result.data,
+                    error: ''
+                };
+            }
+            
+            // Update our tesseractResult with the response data
+            tesseractResult = {
+                success: result.success,
+                data: result.data,
+                error: result.error || 'Tesseract OCR extraction failed'
+            };
+        } catch (error) {
+            console.error('Error with Tesseract OCR fallback:', error);
+            tesseractResult.error = error instanceof Error ? error.message : 'Tesseract OCR extraction failed';
+        }
+        
+        // Step 3: If both methods fail, return the most informative error
+        const errorMessage = !content ? 'Empty content returned from OCR processing' :
+                            !arabicRegex.test(content) ? 'No Arabic text detected in the image' :
+                            content.trim().length < 5 ? 'Insufficient Arabic text detected in the image' :
+                            tesseractResult.error || 'All OCR methods failed to extract Arabic text';
+        
+        return {
+            success: false,
+            data: null,
+            error: errorMessage
+        };
     } catch (error) {
         console.error('Error extracting Arabic text:', error);
         return {

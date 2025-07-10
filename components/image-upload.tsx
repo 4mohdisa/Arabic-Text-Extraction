@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Loader2, File as FileIcon, X, Upload } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { extractDataFromImage } from "@/app/actions/openai.action"
+import { simpleExtract } from "@/app/actions/simple-extract"
+import { fixedExtract } from "@/app/actions/fixed-extract"
 import type { ExtractedText } from "@/types"
 import Image from "next/image"
 
@@ -110,11 +112,27 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
       // After a short delay, change to processing status
       setTimeout(() => setUploadStatus('processing'), 2000)
       
-      // Call OpenAI API
-      const result = await extractDataFromImage(base64Image)
+      // Use the API route instead of server action
+      const response = await fetch('/api/extract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ base64Image }),
+      })
+      
+      const result = await response.json()
 
       if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to extract Arabic text')
+        // Instead of throwing error, show a more specific message
+        toast({
+          title: "No Arabic Text Detected",
+          description: result.error || "The image doesn't contain recognizable Arabic text. Try a different image or adjust the image quality.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        setUploadStatus('idle')
+        return
       }
 
       // Update the extracted text with the file name and preview URL

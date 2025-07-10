@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Copy, Download, FileText, ImageIcon, Clock, Loader2, X } from "lucide-react"
 import Image from "next/image"
-import Link from "next/link"
+import TestAction from "@/components/test-action"
 
 // Define a history item type
 interface HistoryItem extends ExtractedText {
@@ -18,7 +18,7 @@ interface HistoryItem extends ExtractedText {
   title: string;
 }
 
-export default function Home() {
+export default function FixedPage() {
   const [extractedText, setExtractedText] = useState<ExtractedText | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
   const [activeTab, setActiveTab] = useState<'extracted' | 'preview'>('extracted');
@@ -108,16 +108,12 @@ export default function Home() {
           Upload an image or PDF containing Arabic text to extract the content using OpenAI Vision API. The extracted
           text will be displayed below and can be copied or downloaded.
         </p>
-        
-        {/* Link to fixed page for testing */}
-        <div className="mt-4">
-          <Link href="/fixed" className="text-blue-500 hover:underline">
-            Try Fixed Server Action Implementation
-          </Link>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-200px)]">
+      {/* Test component to verify server actions */}
+      <TestAction />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-200px)] mt-8">
         {/* Left Column - Upload Section */}
         <div className="lg:col-span-3">
           <Card className="h-full">

@@ -3,7 +3,22 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+}
+
+.font-arabic {
+  font-family: var(--font-noto-sans-arabic), var(--font-amiri), sans-serif;
+}
+
+.arabic-text {
+  direction: rtl;
+  text-align: right;
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+.arabic-paragraph {
+  margin-bottom: 1rem;
 }
 
 @layer base {

@@ -3,4 +3,5 @@ export interface ExtractedText {
   sourceFile: string
   extractedAt: string
   previewUrl?: string
+  ocrEngine?: 'gpt4o' | 'tesseract' | 'trocr'
 }
