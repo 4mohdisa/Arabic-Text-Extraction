@@ -1,14 +1,11 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, File as FileIcon, X, Upload } from "lucide-react"
+import { Loader2, File as FileIcon, X, Upload, CheckCircle2, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { extractDataFromImage } from "@/app/actions/openai.action"
-import { simpleExtract } from "@/app/actions/simple-extract"
-import { fixedExtract } from "@/app/actions/fixed-extract"
 import type { ExtractedText } from "@/types"
 import Image from "next/image"
 
@@ -23,7 +20,21 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const statusResetTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current)
+      }
+      if (statusResetTimeoutRef.current) {
+        clearTimeout(statusResetTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -33,24 +44,26 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
     }
   }
   
+  // Bug 1 Fix: Use ref to track previous URL and avoid circular dependency
+  const prevPreviewUrlRef = useRef<string>('')
+  
   const createPreview = useCallback((file: File) => {
-    // Clear previous preview
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
+    // Revoke the previous URL using the ref (not state)
+    if (prevPreviewUrlRef.current) {
+      URL.revokeObjectURL(prevPreviewUrlRef.current)
     }
     
-    // Create new preview URL
     const url = URL.createObjectURL(file)
+    prevPreviewUrlRef.current = url
     setPreviewUrl(url)
     
-    // Pass the preview URL to the parent component
     onDataExtracted({
       content: '',
       sourceFile: file.name,
       extractedAt: new Date().toISOString(),
       previewUrl: url
     } as ExtractedText)
-  }, [previewUrl, onDataExtracted])
+  }, [onDataExtracted]) // Removed previewUrl from dependencies
   
   const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -68,9 +81,9 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
     setDragActive(false)
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0]
-      setFile(file)
-      createPreview(file)
+      const droppedFile = e.dataTransfer.files[0]
+      setFile(droppedFile)
+      createPreview(droppedFile)
     }
   }, [createPreview])
   
@@ -78,41 +91,76 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
     inputRef.current?.click()
   }
 
-  const handleClear = () => {
-    setFile(null);
-    setPreviewUrl('');
-    setUploadStatus('idle');
-    setIsLoading(false);
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation()
     
-    // Reset the parent component state
+    // Clean up the preview URL
+    if (prevPreviewUrlRef.current) {
+      URL.revokeObjectURL(prevPreviewUrlRef.current)
+      prevPreviewUrlRef.current = ''
+    }
+    
+    setFile(null)
+    setPreviewUrl('')
+    setUploadStatus('idle')
+    setIsLoading(false)
+    
+    // Clear any pending timeouts
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current)
+      processingTimeoutRef.current = null
+    }
+    if (statusResetTimeoutRef.current) {
+      clearTimeout(statusResetTimeoutRef.current)
+      statusResetTimeoutRef.current = null
+    }
+    
     onDataExtracted({
       content: '',
       sourceFile: '',
       extractedAt: new Date().toISOString(),
-    });
-  };
+    })
+  }
+
+  // Helper to clear processing timeout
+  const clearProcessingTimeout = () => {
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current)
+      processingTimeoutRef.current = null
+    }
+  }
+
+  // Helper to clear status reset timeout
+  const clearStatusResetTimeout = () => {
+    if (statusResetTimeoutRef.current) {
+      clearTimeout(statusResetTimeoutRef.current)
+      statusResetTimeoutRef.current = null
+    }
+  }
 
   const handleUpload = async () => {
     if (!file) return
+
+    // Clear any existing timeouts before starting
+    clearProcessingTimeout()
+    clearStatusResetTimeout()
 
     setIsLoading(true)
     setUploadStatus('uploading')
     
     try {
-      // Show uploading state for a moment
-      await new Promise(resolve => setTimeout(resolve, 800))
+      await new Promise(resolve => setTimeout(resolve, 500))
       
-      // Convert file to base64
       const buffer = await file.arrayBuffer()
       const base64Image = Buffer.from(buffer).toString('base64')
       
-      // Show enhancing state
       setUploadStatus('enhancing')
       
-      // After a short delay, change to processing status
-      setTimeout(() => setUploadStatus('processing'), 2000)
+      // Bug 2 Fix: Store timeout reference so we can cancel it
+      processingTimeoutRef.current = setTimeout(() => {
+        setUploadStatus('processing')
+      }, 1500)
       
-      // Use the API route instead of server action
       const response = await fetch('/api/extract', {
         method: 'POST',
         headers: {
@@ -123,131 +171,185 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
       
       const result = await response.json()
 
+      // Bug 2 Fix: Clear the processing timeout before setting final status
+      clearProcessingTimeout()
+
       if (!result.success || !result.data) {
-        // Instead of throwing error, show a more specific message
         toast({
-          title: "No Arabic Text Detected",
-          description: result.error || "The image doesn't contain recognizable Arabic text. Try a different image or adjust the image quality.",
+          title: "Extraction Failed",
+          description: result.error || "Could not extract text from this document. Try a different image.",
           variant: "destructive",
         })
         setIsLoading(false)
-        setUploadStatus('idle')
+        setUploadStatus('error')
+        statusResetTimeoutRef.current = setTimeout(() => setUploadStatus('idle'), 2000)
         return
       }
 
-      // Update the extracted text with the file name and preview URL
       const extractedData: ExtractedText = {
         ...result.data,
         sourceFile: file.name,
         previewUrl: previewUrl || undefined
       }
       
-      // Send the extracted data to the parent component
       onDataExtracted(extractedData)
+      setUploadStatus('success')
       
       toast({
         title: "Success",
-        description: "Arabic text successfully extracted from image",
+        description: "Text successfully extracted from document",
       })
+      
+      statusResetTimeoutRef.current = setTimeout(() => setUploadStatus('idle'), 2000)
     } catch (error) {
+      // Bug 2 Fix: Clear the processing timeout on error too
+      clearProcessingTimeout()
+      
       console.error('Error:', error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to extract Arabic text",
+        description: error instanceof Error ? error.message : "Failed to extract text",
         variant: "destructive",
       })
+      setUploadStatus('error')
+      statusResetTimeoutRef.current = setTimeout(() => setUploadStatus('idle'), 2000)
     } finally {
       setIsLoading(false)
-      setUploadStatus('idle')
+    }
+  }
+
+  const getStatusContent = () => {
+    switch (uploadStatus) {
+      case 'uploading':
+        return (
+          <>
+            <div className="relative">
+              <Loader2 className="h-10 w-10 text-primary animate-spin" />
+            </div>
+            <p className="text-sm font-medium mt-3">Uploading...</p>
+            <p className="text-xs text-muted-foreground">Preparing your document</p>
+          </>
+        )
+      case 'enhancing':
+        return (
+          <>
+            <div className="relative">
+              <Loader2 className="h-10 w-10 text-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-4 w-4 rounded-full bg-primary/20 animate-ping" />
+              </div>
+            </div>
+            <p className="text-sm font-medium mt-3">Enhancing...</p>
+            <p className="text-xs text-muted-foreground">Optimizing image quality</p>
+          </>
+        )
+      case 'processing':
+        return (
+          <>
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+            <p className="text-sm font-medium mt-3">Extracting text...</p>
+            <p className="text-xs text-muted-foreground">AI is analyzing content</p>
+          </>
+        )
+      case 'success':
+        return (
+          <>
+            <CheckCircle2 className="h-10 w-10 text-green-500" />
+            <p className="text-sm font-medium mt-3 text-green-500">Complete!</p>
+            <p className="text-xs text-muted-foreground">Text extracted successfully</p>
+          </>
+        )
+      case 'error':
+        return (
+          <>
+            <AlertCircle className="h-10 w-10 text-destructive" />
+            <p className="text-sm font-medium mt-3 text-destructive">Failed</p>
+            <p className="text-xs text-muted-foreground">Please try again</p>
+          </>
+        )
+      default:
+        return null
     }
   }
 
   return (
     <div className="w-full flex flex-col gap-4">
       <div 
-        className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 transition-all cursor-pointer
-          ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-muted-foreground/50'}
-          ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}
-        onClick={handleButtonClick}
+        className={`
+          relative flex flex-col items-center justify-center rounded-xl p-6 transition-all cursor-pointer
+          border-2 border-dashed
+          ${dragActive 
+            ? 'border-primary bg-primary/5 scale-[1.02]' 
+            : 'border-border hover:border-primary/50 hover:bg-muted/30'}
+          ${isLoading ? 'pointer-events-none' : ''}
+        `}
+        onClick={!isLoading ? handleButtonClick : undefined}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        {uploadStatus === 'idle' && !file && (
-          <>
-            <Upload className="h-12 w-12 text-muted-foreground mb-3" />
-            <p className="text-sm font-medium mb-1">Drag and drop or click to upload</p>
-            <p className="text-xs text-muted-foreground">Supports JPG, PNG, and PDF files</p>
-          </>
-        )}
-        
-        {uploadStatus === 'idle' && file && (
-          <>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
+        {uploadStatus !== 'idle' ? (
+          <div className="flex flex-col items-center py-4">
+            {getStatusContent()}
+          </div>
+        ) : !file ? (
+          <div className="flex flex-col items-center py-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+              <Upload className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium mb-1">Drop your document here</p>
+            <p className="text-xs text-muted-foreground text-center">
+              or click to browse
+            </p>
+            <div className="flex flex-wrap gap-1 justify-center mt-3">
+              {['JPG', 'PNG', 'PDF', 'WebP'].map((format) => (
+                <span 
+                  key={format} 
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+                >
+                  {format}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="w-full py-2">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
                 {previewUrl ? (
                   <Image 
                     src={previewUrl} 
                     alt="Preview" 
-                    className="h-full w-full object-cover rounded-md" 
-                    width={40}
-                    height={40}
+                    className="h-full w-full object-cover" 
+                    width={48}
+                    height={48}
                   />
                 ) : (
-                  <FileIcon className="h-5 w-5 text-muted-foreground" />
+                  <div className="h-full w-full flex items-center justify-center">
+                    <FileIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>
                 )}
               </div>
-            </div>
-            <div className="flex items-center justify-between w-full mb-2">
-              <div>
-                <p className="text-sm font-medium truncate max-w-[180px]">
-                  {file.name.length > 25 ? file.name.substring(0, 22) + "..." : file.name}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name}
                 </p>
-                <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                <p className="text-xs text-muted-foreground">
+                  {(file.size / 1024).toFixed(1)} KB
+                </p>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8 rounded-full" 
+                className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive flex-shrink-0" 
                 onClick={handleClear}
                 type="button"
-                disabled={isLoading}
-                title="Clear selection"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-          </>
-        )}
-        
-        {uploadStatus === 'uploading' && (
-          <>
-            <Loader2 className="h-12 w-12 text-primary animate-spin mb-3" />
-            <p className="text-sm font-medium mb-1">Uploading document...</p>
-            <p className="text-xs text-muted-foreground">Please wait while we prepare your file</p>
-          </>
-        )}
-        
-        {uploadStatus === 'enhancing' && (
-          <>
-            <div className="relative mb-3">
-              <Loader2 className="h-12 w-12 text-primary animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="h-5 w-5 rounded-full bg-primary/20"></div>
-              </div>
-            </div>
-            <p className="text-sm font-medium mb-1">Enhancing image quality...</p>
-            <p className="text-xs text-muted-foreground">Improving contrast and clarity for better extraction</p>
-          </>
-        )}
-        
-        {uploadStatus === 'processing' && (
-          <>
-            <Loader2 className="h-12 w-12 text-primary animate-spin mb-3" />
-            <p className="text-sm font-medium mb-1">Extracting Arabic text...</p>
-            <p className="text-xs text-muted-foreground">Analyzing document content with AI</p>
-          </>
+          </div>
         )}
         
         <Input
@@ -264,16 +366,18 @@ export default function ImageUpload({ onDataExtracted }: ImageUploadProps) {
       <Button 
         onClick={handleUpload}
         disabled={!file || isLoading}
-        className="w-full"
+        className="w-full h-11 font-medium"
         variant="default"
       >
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            {uploadStatus === 'uploading' ? 'Uploading...' : 'Extracting text...'}
+            Processing...
           </>
         ) : (
-          'Extract Arabic Text'
+          <>
+            Extract Text
+          </>
         )}
       </Button>
     </div>

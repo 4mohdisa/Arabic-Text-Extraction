@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ExtractedText } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import Link from "next/link"
 
 export default function FixedPage() {
   const [result, setResult] = useState<ExtractedText | null>(null)
@@ -85,7 +86,7 @@ export default function FixedPage() {
       </Card>
       
       <div className="mt-8">
-        <a href="/" className="text-blue-500 hover:underline">Back to main page</a>
+        <Link href="/" className="text-blue-500 hover:underline">Back to main page</Link>
       </div>
     </div>
   )

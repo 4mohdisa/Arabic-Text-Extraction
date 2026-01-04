@@ -49,7 +49,7 @@ export async function fixedExtract(base64Image: string): Promise<{
     console.log('Starting fixed extraction with image length:', base64Image.length);
     
     // Preprocess the image
-    const enhancedImage = await preprocessImage(base64Image);
+    await preprocessImage(base64Image);
     console.log('Image preprocessing complete');
     
     // Create a mock result for testing

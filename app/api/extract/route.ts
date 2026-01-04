@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import type { ExtractedText } from '@/types'
+import { extractDataFromImage } from '@/app/actions/openai.action'
+
+export const maxDuration = 60 // Allow up to 60 seconds for processing
 
 export async function POST(request: Request) {
   try {
@@ -14,28 +16,41 @@ export async function POST(request: Request) {
       )
     }
     
-    console.log('API route received image of length:', base64Image.length)
-    
-    // Create a mock result for testing
-    const extractedText: ExtractedText = {
-      content: 'هذا نص عربي بسيط للاختبار - تم استخراجه بنجاح من API',
-      sourceFile: '',
-      extractedAt: new Date().toISOString(),
-      ocrEngine: 'gpt4o' // Using a valid OCR engine type
+    // Validate base64 image
+    if (typeof base64Image !== 'string' || base64Image.length < 100) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid image data' },
+        { status: 400 }
+      )
     }
     
-    return NextResponse.json({
-      success: true,
-      data: extractedText,
-      error: ''
-    })
+    console.log('API: Starting text extraction, image size:', Math.round(base64Image.length / 1024), 'KB')
+    
+    // Extract text using the universal extraction function
+    const result = await extractDataFromImage(base64Image)
+    
+    if (result.success && result.data) {
+      console.log('API: Extraction successful, text length:', result.data.content.length)
+      return NextResponse.json({
+        success: true,
+        data: result.data,
+        error: ''
+      })
+    } else {
+      console.log('API: Extraction failed:', result.error)
+      return NextResponse.json({
+        success: false,
+        data: null,
+        error: result.error || 'Failed to extract text from image'
+      })
+    }
   } catch (error) {
     console.error('API extraction error:', error)
     return NextResponse.json(
       { 
         success: false, 
         data: null,
-        error: error instanceof Error ? error.message : 'API extraction failed' 
+        error: error instanceof Error ? error.message : 'Text extraction failed' 
       },
       { status: 500 }
     )

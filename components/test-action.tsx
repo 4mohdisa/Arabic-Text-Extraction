@@ -23,7 +23,7 @@ export default function TestAction() {
       let response;
       if (testType === 'minimal') {
         // Call the minimal server action
-        response = await minimalExtract("test")
+        response = await minimalExtract()
       } else {
         // Call the fixed server action with a base64 image
         response = await fixedExtract(testBase64)

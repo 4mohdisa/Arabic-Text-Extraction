@@ -1,108 +1,82 @@
-# Arabic Text Extraction
+# VisionExtract
 
 <div align="center">
 
-![Arabic Text Extraction](https://img.shields.io/badge/Arabic-Text%20Extraction-blue?style=for-the-badge)
-![Next.js](https://img.shields.io/badge/Next.js-15.1.0-black?style=for-the-badge&logo=next.js)
+![VisionExtract](https://img.shields.io/badge/Vision-Extract-14b8a6?style=for-the-badge)
+![Next.js](https://img.shields.io/badge/Next.js-15.1-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-green?style=for-the-badge&logo=openai)
 
-A powerful, modern web application for extracting Arabic text from images and documents using advanced OCR technology and AI vision models.
+**AI-Powered Document Text Extraction**
+
+Extract text from any document or image using advanced AI vision models. Support for 50+ languages including Arabic, English, Chinese, and more.
+
+[Get Started](#getting-started) • [Features](#features) • [Documentation](#usage-guide)
 
 </div>
 
-## 🌟 Overview
+## ✨ Features
 
-Arabic Text Extraction is a sophisticated Next.js application that leverages multiple OCR engines and AI vision models to accurately extract Arabic text from uploaded images and documents. The application features advanced image preprocessing, multiple extraction methods, and a modern, responsive user interface optimized for Arabic text handling.
+### 🤖 AI-Powered OCR
+Leverages GPT-4o Vision for unmatched accuracy in text recognition across complex layouts, handwritten content, and mixed-language documents.
 
-## ✨ Key Features
+### 🌍 Multi-Language Support
+Extract text in Arabic, English, Chinese, and 50+ languages with native script preservation and right-to-left text handling.
 
-### 🔍 **Multiple OCR Engines**
-- **GPT-4o Vision API**: Primary extraction using OpenAI's advanced vision model with specialized Arabic prompts
-- **Tesseract OCR**: Fallback OCR engine with Arabic language support and optimized parameters
-- **Hybrid Approach**: Automatic fallback between engines for maximum extraction success
+### 🖼️ Smart Preprocessing
+Automatic image enhancement, rotation correction, document boundary detection, and background removal for optimal extraction results.
 
-### 🖼️ **Advanced Image Processing**
-- **Document Detection**: Automatic detection and cropping of document pages from complex backgrounds
-- **Image Enhancement**: Intelligent preprocessing including:
-  - Brightness and contrast adjustment
-  - Noise reduction and sharpening
-  - Automatic rotation correction
-  - Adaptive thresholding
-  - Background removal
+### ⚡ Lightning Fast
+Optimized processing pipeline delivers results in seconds. Intelligent caching and batch processing support.
 
-### 🎨 **Modern User Interface**
-- **Drag & Drop Upload**: Intuitive file upload with visual feedback
-- **Real-time Preview**: Live image preview with processing status
-- **Tabbed Interface**: Seamless switching between extracted text and image preview
-- **Responsive Design**: Optimized for desktop and mobile devices
-- **Arabic Typography**: Specialized Arabic fonts (Noto Sans Arabic, Amiri)
+### 🔒 Privacy First
+Your documents are processed securely and never stored on our servers. All processing happens in real-time.
 
-### 📚 **Content Management**
-- **Extraction History**: Local storage of recent extractions (up to 10 items)
-- **Text Operations**: Copy to clipboard, download as text file, clear content
-- **Source Tracking**: Maintains original filename and extraction metadata
-- **Processing Indicators**: Real-time status updates during extraction
+### 📄 Format Flexible
+Supports JPG, PNG, WebP, PDF, and more. Handles photos, scans, screenshots, and handwritten notes.
 
-### ⚡ **Performance & Reliability**
-- **Error Handling**: Comprehensive error handling with user-friendly messages
-- **Retry Logic**: Automatic retry mechanism for API failures
-- **Fallback Systems**: Multiple extraction methods ensure high success rates
-- **Optimized Processing**: Intelligent image analysis for optimal preprocessing
+## 🛠️ Tech Stack
 
-## 🛠️ Technology Stack
-
-### **Frontend**
-- **Next.js 15.1.0** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Modern styling framework
-- **Radix UI** - Accessible component primitives
-- **Lucide React** - Beautiful icons
-
-### **Backend & Processing**
-- **OpenAI API** - GPT-4o Vision for AI-powered text extraction
-- **Tesseract.js** - OCR engine for Arabic text recognition
-- **Sharp** - High-performance image processing
-- **Server Actions** - Modern server-side processing
-
-### **UI Components**
-- **Shadcn/ui** - Modern, accessible component library
-- **React Hook Form** - Form handling
-- **Toast Notifications** - User feedback system
+| Category | Technology |
+|----------|------------|
+| **Framework** | Next.js 15.1 with App Router & Turbopack |
+| **Language** | TypeScript 5 |
+| **Styling** | Tailwind CSS 3.4 + CSS Variables |
+| **UI Components** | Shadcn/ui + Radix UI |
+| **OCR Primary** | OpenAI GPT-4o Vision API |
+| **OCR Fallback** | Tesseract.js 6.0 |
+| **Image Processing** | Sharp |
+| **Icons** | Lucide React |
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn package manager
+- Node.js 18+
+- npm or yarn
 - OpenAI API key
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/arabic-text-extraction.git
-   cd arabic-text-extraction
+   git clone https://github.com/your-username/visionextract.git
+   cd visionextract
    ```
 
 2. **Install dependencies**
    ```bash
    npm install
-   # or
-   yarn install
    ```
 
 3. **Environment Setup**
-   Create a `.env.local` file in the root directory:
+   Create a `.env.local` file:
    ```env
    OPENAI_API_KEY=your_openai_api_key_here
    ```
 
-4. **Run the development server**
+4. **Start development server**
    ```bash
    npm run dev
-   # or
-   yarn dev
    ```
 
 5. **Open your browser**
@@ -110,84 +84,14 @@ Arabic Text Extraction is a sophisticated Next.js application that leverages mul
 
 ## 📖 Usage Guide
 
-### **Basic Text Extraction**
+### Basic Text Extraction
 
-1. **Upload an Image**
-   - Drag and drop an image file onto the upload area
-   - Or click the upload area to select a file
-   - Supported formats: JPG, PNG, JPEG, WebP, PDF
+1. **Upload** - Drag and drop or click to upload your document
+2. **Process** - Click "Extract Text" to begin AI analysis
+3. **Review** - View extracted text in the content panel
+4. **Export** - Copy to clipboard or download as .txt file
 
-2. **Preview and Process**
-   - Image preview appears in the right panel
-   - Click "Extract Text" to begin processing
-   - Monitor real-time status updates
-
-3. **View Results**
-   - Extracted Arabic text appears in the text panel
-   - Use copy, download, or clear buttons as needed
-   - View extraction metadata (OCR engine used, timestamp)
-
-### **Advanced Features**
-
-- **History Navigation**: Access previous extractions from the history panel
-- **Multiple Implementations**: Test different extraction methods via `/fixed` page
-- **Batch Processing**: Process multiple images sequentially
-
-## 🏗️ Project Structure
-
-```
-Arabic-TextExtraction/
-├── app/
-│   ├── actions/                    # Server actions
-│   │   ├── openai.action.ts       # OpenAI GPT-4o integration
-│   │   ├── tesseract.action.ts    # Tesseract OCR implementation
-│   │   ├── document-detection.ts  # Document cropping logic
-│   │   ├── simple-extract.ts      # Simple extraction for testing
-│   │   ├── fixed-extract.ts       # Alternative implementation
-│   │   └── minimal-action.ts      # Minimal test action
-│   ├── api/
-│   │   └── extract/
-│   │       └── route.ts           # API endpoint for extraction
-│   ├── fixed/                     # Alternative implementation page
-│   ├── globals.css                # Global styles
-│   ├── layout.tsx                 # Root layout with Arabic fonts
-│   └── page.tsx                   # Main application page
-├── components/
-│   ├── ui/                        # Reusable UI components
-│   ├── image-upload.tsx           # File upload component
-│   └── test-action.tsx            # Testing component
-├── types/
-│   └── index.ts                   # TypeScript type definitions
-├── lib/
-│   └── utils.ts                   # Utility functions
-└── hooks/
-    └── use-toast.ts               # Toast notification hook
-```
-
-## 🔧 Configuration
-
-### **Image Processing Parameters**
-
-The application uses adaptive image processing based on image characteristics:
-
-- **High Contrast Mode**: For dark or low-contrast images
-- **Document Mode**: For scanned documents and bright images
-- **Standard Mode**: Default processing for typical photographs
-- **Adaptive Mode**: Dynamic adjustment based on image analysis
-
-### **OCR Engine Selection**
-
-1. **Primary**: OpenAI GPT-4o Vision API
-   - Superior accuracy for complex layouts
-   - Context-aware text extraction
-   - Handles handwritten and printed text
-
-2. **Fallback**: Tesseract OCR
-   - Reliable for standard printed text
-   - Optimized for Arabic language
-   - Offline processing capability
-
-## 📊 Supported File Types
+### Supported Formats
 
 | Format | Support | Max Size | Notes |
 |--------|---------|----------|-------|
@@ -196,63 +100,64 @@ The application uses adaptive image processing based on image characteristics:
 | WebP | ✅ | 10MB | Modern format support |
 | PDF | ✅ | 10MB | Single page extraction |
 
-## 🎯 Features in Detail
+## 🎨 Design System
 
-### **Document Detection**
-- Automatic page boundary detection
-- Background removal for handheld photos
-- Perspective correction for angled shots
-- Smart cropping to focus on text content
+VisionExtract uses a custom **Deep Ocean Teal** color palette:
 
-### **Arabic Text Optimization**
-- Specialized Arabic language models
-- Right-to-left text handling
-- Diacritical mark preservation
-- Multiple Arabic script styles support
+- **Primary**: Vibrant Teal (`hsl(175, 80%, 45%)`)
+- **Accent**: Warm Coral (`hsl(15, 85%, 60%)`)
+- **Background**: Deep Slate (`hsl(200, 25%, 3%)`)
+- **Success**: Emerald (`hsl(160, 84%, 39%)`)
 
-### **User Experience**
-- Progressive loading indicators
-- Contextual error messages
-- Keyboard shortcuts for common actions
-- Accessibility features compliance
+## 📁 Project Structure
 
-## 🔍 API Reference
-
-### **Extraction Endpoint**
-
-```typescript
-POST /api/extract
-Content-Type: application/json
-
-{
-  "base64Image": "data:image/jpeg;base64,..."
-}
+```
+visionextract/
+├── app/
+│   ├── actions/          # Server actions for OCR
+│   ├── api/              # API routes
+│   ├── page.tsx          # Landing page
+│   └── layout.tsx        # Root layout
+├── components/
+│   ├── ui/               # Shadcn UI components
+│   └── image-upload.tsx  # Upload component
+├── types/                # TypeScript definitions
+├── lib/                  # Utilities
+└── hooks/                # React hooks
 ```
 
-**Response:**
-```typescript
-{
-  "success": boolean,
-  "data": {
-    "content": string,
-    "sourceFile": string,
-    "extractedAt": string,
-    "ocrEngine": "gpt4o" | "tesseract",
-    "previewUrl"?: string
-  },
-  "error": string
-}
+## 🔧 Configuration
+
+### Environment Variables
+
+```env
+OPENAI_API_KEY=your_api_key    # Required: OpenAI API key
+NODE_ENV=production            # Optional: Environment mode
 ```
+
+### OCR Engine Selection
+
+1. **Primary**: OpenAI GPT-4o Vision API
+   - Superior accuracy for complex layouts
+   - Context-aware text extraction
+   - Handles handwritten and printed text
+
+2. **Fallback**: Tesseract OCR
+   - Reliable for standard printed text
+   - Multi-language support
+   - Offline processing capability
 
 ## 🚀 Deployment
 
-### **Vercel (Recommended)**
+### Vercel (Recommended)
+
 ```bash
 npm run build
 vercel --prod
 ```
 
-### **Docker**
+### Docker
+
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
@@ -264,49 +169,14 @@ EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-### **Environment Variables**
-```env
-OPENAI_API_KEY=your_api_key
-NODE_ENV=production
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### **Development Guidelines**
-- Follow TypeScript best practices
-- Maintain component modularity
-- Add appropriate error handling
-- Update documentation for new features
-
 ## 📄 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **OpenAI** for the powerful GPT-4o Vision API
-- **Tesseract.js** for open-source OCR capabilities
-- **Vercel** for seamless deployment platform
-- **Radix UI** for accessible component primitives
-- **Tailwind CSS** for modern styling framework
-
-## 📞 Support
-
-For support, questions, or suggestions:
-- Open an issue on GitHub
-- Check the documentation
-- Review existing discussions
+This project is licensed under the MIT License.
 
 ---
 
 <div align="center">
 
-**Made with ❤️ for the Arabic text processing community**
+**Built with ❤️ using Next.js and OpenAI**
 
-</div> 
+</div>

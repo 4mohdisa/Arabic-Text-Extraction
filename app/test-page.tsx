@@ -1,6 +1,7 @@
 "use client"
 
 import TestAction from "@/components/test-action"
+import Link from "next/link"
 
 export default function TestPage() {
   return (
@@ -11,7 +12,7 @@ export default function TestPage() {
       <TestAction />
       
       <div className="mt-8">
-        <a href="/" className="text-blue-500 hover:underline">Back to main page</a>
+        <Link href="/" className="text-blue-500 hover:underline">Back to main page</Link>
       </div>
     </div>
   )

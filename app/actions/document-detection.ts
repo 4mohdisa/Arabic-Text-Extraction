@@ -1,7 +1,6 @@
 'use server';
 
 import sharp from 'sharp';
-import { revalidatePath } from 'next/cache';
 
 /**
  * Attempts to detect and crop the document page from an image

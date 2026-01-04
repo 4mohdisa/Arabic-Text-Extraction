@@ -5,7 +5,7 @@ import { ExtractedText } from '@/types';
 /**
  * Minimal server action for testing
  */
-export async function minimalExtract(text: string): Promise<{
+export async function minimalExtract(): Promise<{
   success: boolean;
   data: ExtractedText | null;
   error: string;
@@ -24,7 +24,7 @@ export async function minimalExtract(text: string): Promise<{
       data: extractedText,
       error: ''
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       data: null,
